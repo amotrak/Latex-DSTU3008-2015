@@ -1,0 +1,78 @@
+\usepackage{listings}
+
+\lstset{upquote=true}
+
+% straight double quotes hack
+\makeatletter
+\lst@CCPutMacro
+    \lst@ProcessOther {"22}{\lst@ifupquote \textquotedbl
+                                     \else \char34\relax \fi}
+    \@empty\z@\@empty
+\makeatother
+
+% Значения по умолчанию
+\lstset{
+  basicstyle=\footnotesize,
+  breakatwhitespace=true,% разрыв строк только на whitespacce
+  breaklines=true,       % переносить длинные строки
+%   captionpos=b,          % подписи снизу -- вроде не надо
+  inputencoding=koi8-r,
+  numbers=left,          % нумерация слева
+  numberstyle=\footnotesize,
+  showspaces=false,      % показывать пробелы подчеркиваниями -- идиотизм 70-х годов
+  showstringspaces=false,
+  showtabs=false,        % и табы тоже
+  stepnumber=1,
+  xleftmargin=2em,
+  tabsize=4,              % кому нужны табы по 8 символов?
+  frame=single,
+  escapeinside={(/}{/)},
+  otherkeywords={\&},
+  emph={&},
+}
+
+% correctly render cyrillic comments
+\makeatletter
+\lst@InputCatcodes
+\def\lst@DefEC{%
+    \lst@CCECUse \lst@ProcessLetter
+    ^^^^0410^^^^0411^^^^0412^^^^0413^^^^0490^^^^0414^^^^0415^^^^0404% А Б В Г Ґ Д Е Є
+    ^^^^0416^^^^0417^^^^0418^^^^0406^^^^0407^^^^0419^^^^041a^^^^041b% Ж З И І Ї Й К Л
+    ^^^^041c^^^^041d^^^^041e^^^^041f^^^^0420^^^^0421^^^^0422^^^^0423% М Н О П Р С Т У
+    ^^^^0424^^^^0425^^^^0426^^^^0427^^^^0428^^^^0429^^^^042c^^^^042e% Ф Х Ц Ч Ш Щ Ь Ю
+    ^^^^042f% Я
+    ^^^^0430^^^^0431^^^^0432^^^^0433^^^^0491^^^^0434^^^^0435^^^^0454% а б в г ґ д е є
+    ^^^^0436^^^^0437^^^^0438^^^^0456^^^^0457^^^^0439^^^^043a^^^^043b% ж з и і ї й к л
+    ^^^^043c^^^^043d^^^^043e^^^^043f^^^^0440^^^^0441^^^^0442^^^^0443% м н о п р с т у
+    ^^^^0444^^^^0445^^^^0446^^^^0447^^^^0448^^^^0449^^^^044c^^^^044e% ф х ц ч ш щ ь ю
+    ^^^^044f% я
+    ^^^^042a^^^^042b^^^^042d% Ъ Ы Э
+    ^^^^044a^^^^044b^^^^044d% ъ ы э
+    ^^00}
+\lst@RestoreCatcodes
+\makeatother
+
+% Стиль для псевдокода: строчки обычно короткие, поэтому размер шрифта побольше
+\lstdefinestyle{pseudocode}{
+  basicstyle=\small,
+  keywordstyle=\color{black}\bfseries\underbar,
+  language=Pseudocode,
+  numberstyle=\footnotesize,
+  commentstyle=\footnotesize\it
+}
+
+% Стиль для обычного кода: маленький шрифт
+\lstdefinestyle{realcode}{
+  basicstyle=\scriptsize,
+  numberstyle=\footnotesize
+}
+
+% Стиль для коротких кусков обычного кода: средний шрифт
+\lstdefinestyle{simplecode}{
+  basicstyle=\footnotesize,
+  numberstyle=\footnotesize
+}
+
+\lstdefinestyle{csharp}{language=[Sharp]C, style=simplecode}
+\lstdefinestyle{csharp-small}{language=[Sharp]C, style=realcode}
+\lstdefinestyle{cpp-small}{language=C++, style=realcode}

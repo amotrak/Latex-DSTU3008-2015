@@ -1,0 +1,43 @@
+\usepackage{titletoc}
+\makeatletter
+
+% \titlecontents{⟨section⟩}[⟨left⟩]{⟨above-code⟩}
+% {⟨numbered-entry-format⟩}{⟨numberless-entry-format⟩}
+% {⟨filler-page-format⟩}[⟨below-code⟩]
+
+% FIX: Chapters should be in titlecase
+\titlecontents{chapter}
+[0pt]                     % left margin
+{}                        % formatting before
+{\bfseries\MakeUppercase\@chapapp\ \thecontentslabel.\ \MakeUppercase} % numbered format
+{\bfseries\MakeUppercase} % numberless format
+{\bfseries\titlerule*[0.5pc]{.}\contentspage} % filler
+{}                        % formatting after
+
+% \titlecontents{chapter}[0pt]{}{\bfseries\@chapapp\ \thecontentslabel.\ }{\bfseries}{\bfseries\titlerule*[0.5pc]{.}\contentspage}{}
+
+\titlecontents{section}
+[12mm]                               % left margin
+{}
+{\thecontentslabel.\hspace{0.3em}}   % numbered format
+{}
+{\titlerule*[0.5pc]{.}\contentspage} % filler
+{}
+
+\titlecontents{subsection}
+[\dimexpr12mm+1.8em\relax]           % left margin
+{}
+{\thecontentslabel.\hspace{0.3em}}   % numbered format
+{}
+{\titlerule*[0.5pc]{.}\contentspage} % filler
+{}
+
+% РОЗДІЛ А Додаток 1 -> ДОДАТОК А\nДодаток 1
+\g@addto@macro\appendices{
+  \addtocontents{toc}{\protect\renewcommand{\protect\@chapapp}{\appendixname}}
+  \titleformat{\chapter}[display] {\centering}
+    {\MakeUppercase{\appendixname}\enspace\thechapter}
+    {.5em}
+    {\centering\MakeUppercase}
+}
+\makeatother

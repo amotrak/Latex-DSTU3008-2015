@@ -1,0 +1,34 @@
+\usepackage{titlesec, placeins}
+\usepackage{etoolbox}
+% \titlespacing{<command>}{<left>}{<before-sep>}{<after-sep>}[<right>]
+% \titleformat{⟨command⟩}[⟨shape⟩]{⟨format⟩}{⟨label⟩}{⟨sep⟩}{⟨before-code⟩}[⟨after-code⟩]
+
+
+% \titleformat{\chapter}[display] {\centering\MakeUppercase}{\chaptername\ \thechapter\ }{\ }{\Huge\textbf}
+
+%\titlespacing{\chapter} {0pt}{50pt}{1pt}
+
+% FIX: Chapters should be in titlecase just like in the TOC
+\titleformat{\chapter}
+{\centering\MakeUppercase} % format
+{\chaptername\ \thechapter\ } % label РОЗДІЛ 1
+{0pt}
+{}
+
+\titlespacing{\chapter}
+{0pt}
+{-\topskip}
+{\baselineskip}
+
+% FIX: Make the right spacing between sections and figures/lists as par with the right spacing between the chapter title and page header. Use \\ if the title overlaps the preceding text
+\titleformat{\section}{\centering\MakeUppercase}{\thesection\ }{0pt}{}
+\titlespacing{\section}{0pt}{-\topskip}{\baselineskip}
+
+\titleformat{\subsection}{\centering\MakeUppercase}{\thesubsection\ }{0pt}{}
+\titlespacing{\subsection}{0pt}{-\topskip}{\baselineskip}
+
+%\let\Oldsection\section
+%\renewcommand{\section}{\FloatBarrier\Oldsection}
+
+%\let\Oldchapter\chapter
+%\renewcommand{\chapter}{\FloatBarrier\Oldchapter}

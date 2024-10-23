@@ -1,0 +1,17 @@
+\usepackage{caption}
+
+\DeclareCaptionLabelSeparator{custom}{ -- }
+\captionsetup {
+    labelsep=custom
+}
+
+%\captionsetup{labelsep=emdash,aboveskip=10pt,belowskip=0pt,position=bottom}
+
+% У рисунков вырвнивание по центру
+%\captionsetup[figure]{justification=centering}
+% У таблиц -- слева, зазор 5pt вместо 10
+%\captionsetup[table]{position=top,aboveskip=5pt}
+
+\captionsetup{aboveskip=10pt,belowskip=0pt,position=bottom}
+\captionsetup[table]{position=top, singlelinecheck=off, aboveskip=5pt}
+\captionsetup[lstlisting]{position=top, singlelinecheck=off, margin=1.5em, font=small}

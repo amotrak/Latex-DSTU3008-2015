@@ -1,0 +1,13 @@
+\usepackage{xassoccnt}
+\usepackage{lastpage}
+
+\NewTotalDocumentCounter{totalfigures}
+\NewTotalDocumentCounter{totaltables}
+\NewTotalDocumentCounter{totallistings}
+\NewTotalDocumentCounter{appendixchapters}
+\DeclareAssociatedCounters{figure}{totalfigures}
+\DeclareAssociatedCounters{table}{totaltables}
+\DeclareAssociatedCounters{lstlisting}{totallistings}
+
+\NewTotalDocumentCounter{totalbibliography}
+\AtDataInput{{\stepcounter{totalbibliography}}{}}

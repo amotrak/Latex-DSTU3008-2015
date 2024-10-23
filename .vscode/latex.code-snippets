@@ -1,0 +1,30 @@
+{
+	"Ref Figure":{"prefix":"rfig","body":["рис.~\\ref{fig:$1}"]},
+	"Ref Table":{"prefix":"rtab","body":["табл.~\\ref{tab:$1}"]},
+
+	"Celsius":{"prefix":"@cel","body":["$^\\circ\\$C"]},
+	
+	"Number with №":{"prefix":"@num","body":["\\textnumero$1"]},
+	"Monospace":{"prefix":"mono","body":["\\texttt{$1}"]},
+	"Table spacing":{"prefix":"tabspace","body": ["\\renewcommand{\\arraystretch}{${1:1.3}}"]},
+
+	"Figure": {
+		"prefix": "FIG",
+		"body": [
+			"\\begin{figure}[ht]",
+			"    \\centering",
+			"    \\includegraphics[width=\\linewidth]{$2}",
+			"    \\caption{$1}",
+			"    \\label{fig:$3}",
+			"\\end{figure}"
+		]
+	},
+	"Listing": {
+		"prefix": "LST",
+		"body": [
+			"\\begin{lstlisting}[style=$1-small, caption=$2, label=lst:$3]",
+			"$4",
+			"\\end{lstlisting}"
+		]
+	}
+}

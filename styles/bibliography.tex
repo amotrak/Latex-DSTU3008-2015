@@ -1,0 +1,45 @@
+\usepackage[autostyle]{csquotes}
+%\usepackage{url}
+\usepackage{soul}
+\usepackage[
+  backend=biber,
+  bibencoding=utf8,
+  hyperref=auto,
+  sorting=ntvy,
+  language=auto,
+  autolang=other,
+  style=gost-numeric,
+  url=false
+]{biblatex}
+
+\renewcommand*{\mkgostheading}[1]{#1}
+%\renewcommand*{\newblockpunct}{\addperiod\space\bibsentence}
+\renewcommand*{\addcolondelim}{\addcolon\space}
+
+%\urlstyle{same}
+
+% TODO: make urls prettier
+
+\usepackage{hyperref}
+\hypersetup{
+    breaklinks=true,
+    hidelinks, % Remove visible links altogether
+    %urlbordercolor = 1 1 1% Make URL link border white
+}
+\DeclareFieldFormat{url}{URL:~\href{#1}{\ul{#1}}}
+
+% \usepackage{xcolor}
+% \usepackage{hyperref}
+% \hypersetup{
+%     breaklinks=true,
+%     hidelinks,
+%     allbordercolors=black,
+%     pdfborderstyle={/S/U/W 1},
+% }
+% \DeclareFieldFormat{url}{URL:~\url{#1}}
+
+\renewcommand\UrlFont{\rmfamily}
+
+\nocite{*}
+
+\addbibresource{bibliography.bib}

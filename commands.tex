@@ -1,0 +1,49 @@
+\newcommand*{\Topic}[1] {\textbf{Тема:} #1}
+\newcommand*{\Purpose}[1] {\textbf{Мета:} #1}
+\newcommand*{\Variant}[1] {\textbf{Варіант:} \textnumero#1}
+
+\newcommand*{\Introduction} {
+    \pagestyle{headings}
+    \chapterhere*[headings]{Вступ}
+    \addcontentsline{toc}{chapter}{Вступ}
+}
+\newcommand*{\TaskList} {
+    \chapterhere*{Завдання}
+    \addcontentsline{toc}{chapter}{Завдання}
+    \thispagestyle{empty}
+}
+\newcommand*{\Conclusion} {
+    \chapterhere*[headings]{Висновки}
+    \addcontentsline{toc}{chapter}{Висновки}
+}
+\newcommand*{\FirstChapter}[1] {
+    \pagestyle{headings}
+    \chapter{#1}
+    \thispagestyle{headings}
+}
+\newcommand*{\toc} {
+    \phantomsection
+    \addcontentsline{toc}{chapter}{Зміст}
+    %\addtocontents{toc}
+    %{\protect\thispagestyle{empty}}
+    \tableofcontents
+    \thispagestyle{empty}
+    \clearpage
+}
+
+\newcommand*{\hyp}[1] {
+    \fussy\hyphenpenalty=50\hbadness=1000
+    #1
+}
+
+\NewDocumentCommand{\chapterhere}{s o m }{%
+    \begingroup
+    \let\clearpage\relax
+    \IfBooleanTF{#1}
+      {\chapter*{#3}}
+      {\chapter{#3}}
+    \IfValueTF{#2}
+        {\thispagestyle{#2}}
+        {}
+    \endgroup
+}

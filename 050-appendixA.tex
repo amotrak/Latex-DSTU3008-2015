@@ -1,0 +1,530 @@
+\AddAssociatedCounters{chapter}{appendixchapters}
+
+\chapter{Код програми}
+\thispagestyle{headings}
+
+\begin{lstlisting}[style=cpp-small, caption=Базовий клас температурного датчика, label=lst:sensor_base]
+enum class SensorType {
+    kNTC,
+    kDS18,
+    kDHT11,
+    kDHT22,
+    kHTU21,
+    kThermocouple
+};
+
+class Sensor {
+    public:
+    Sensor(const char *label, uint16_t interval): label_(label), interval_(interval) {}
+    ~Sensor() {};
+    const char* getLabel() const { return label_; };
+    uint16_t getInterval() const { return interval_; };
+    void getCachedInfo(float *temp, float *humidity) {
+        *temp = temp_;
+        *humidity = humidity_;
+    }
+
+    virtual bool begin() { return true; };
+    virtual bool requestTemp() { return true; };
+    virtual SensorType getType() const = 0;
+    virtual void getInfo(float *temp, float *humidity = nullptr) = 0;
+
+    protected:
+    const char *label_;
+    uint16_t interval_;
+    float temp_ = INFINITY;
+    float humidity_ = -1;
+
+    protected:
+    inline void setCachedInfo(float temp, float humidity = -1) {
+        temp_ = temp;
+        humidity_ = humidity;
+    }
+    inline void setHumidity(float *humidity, float humidity_ = -1) {
+        if (humidity == nullptr) return;
+        *humidity = humidity_;
+    }
+};
+
+template<SensorType Type, class T = void*>
+class TypedSensor: public Sensor {
+    public:
+    TypedSensor(T sensor, const char *label, uint16_t interval): Sensor(label, interval), sensor_(sensor) {}
+    TypedSensor(const char *label, uint16_t interval): Sensor(label, interval) {}
+
+    inline SensorType getType() const override final {
+        return Type;
+    }
+
+    protected:
+    T sensor_;
+};
+\end{lstlisting}
+
+\begin{lstlisting}[style=cpp-small, caption=Клас для роботи з термістром, label=lst:ntc]
+template<uint8_t Pin, uint16_t BCoeff, uint8_t NominalTemp = 25>
+class NTC {
+    public:
+    NTC(uint32_t series_res, uint32_t nominal_res = 10000) {
+        pinMode(Pin, INPUT);
+        series_nominal_ratio_ = (float)series_res/nominal_res;
+    }
+
+    static float analogToCelsius(uint16_t analog, float series_nominal_ratio) {
+        float temp = series_nominal_ratio * (float)analog / (1023.f - analog);
+
+        temp = log(temp) / (float)BCoeff;
+        temp += 1.f /((float)NominalTemp + 273.15);
+        return (1.f / temp) - 273.15;
+    }
+
+    float getTemperature() {
+        uint16_t analog = analogRead(Pin);
+        return analogToCelsius(analog, series_nominal_ratio_);
+    }
+
+    float getTemperatureAverage(uint8_t samples = 64) {
+        uint16_t sum = 0;
+        for (uint8_t i = 0; i < samples; ++i) {
+            sum += analogRead(Pin);
+        }
+        return analogToCelsius((float)sum / samples, series_nominal_ratio_);
+    }
+
+    private:
+    float series_nominal_ratio_ = 1.0;
+};
+\end{lstlisting}
+
+\begin{lstlisting}[style=cpp-small, caption=Клас-спадок базового класу Sensor для роботи з NTC термістром, label=lst:ntc_sensor]
+#include "NTCSensor.h"
+#include "Sensor.h"
+
+template<SensorType Type, class T>
+class NTCSensor: public TypedSensor<Type, T> {
+    public:
+    NTCSensor(T sensor, const char *label, uint16_t interval): TypedSensor<Type, T>(sensor, label, interval) {}
+
+    void getInfo(float *temp, float *humidity = nullptr) override {
+        *temp = this->sensor_->getTemperatureAverage();
+        this->setHumidity(humidity);
+        this->setCachedInfo(*temp);
+    }
+};
+
+#define NTC_PIN A0
+#define NTC_R 9975
+#define NTC_R1 10000
+#define NTC_T 25
+#define NTC_B 3950
+
+#define NTC_INTERVAL 500
+const char ntc_label[] PROGMEM = "NTC";
+
+using NTCConf = NTC<NTC_PIN, NTC_B, NTC_T>;
+NTCConf ntc(NTC_R1, NTC_R);
+NTCSensor<SensorType::kNTC, NTCConf*> ntc_sensor(&ntc, ntc_label, NTC_INTERVAL);
+\end{lstlisting}
+
+\begin{lstlisting}[style=cpp-small, caption=Клас-спадок базового класу Sensor для роботи з термопарою К-типу, label=lst:tc_sensor]
+#include "NTC.h"
+#include "Sensor.h"
+
+template<SensorType Type, class T, uint8_t Pin, uint16_t OpAmpGain>
+class ThermocoupleSensor: public TypedSensor<Type, T> {
+    public:
+    ThermocoupleSensor(T sensor, const char *label, uint16_t interval, float seebeck_coeff = 0.0000414): TypedSensor<Type, T>(sensor, label, interval) {
+        pinMode(Pin, INPUT);
+        seebeck_coeff_ = seebeck_coeff;
+    }
+
+    void getInfo(float *temp, float *humidity = nullptr) override {
+        getInfo(1, temp, humidity);
+    }
+
+    void getInfo(uint8_t samples, float *temp, float *humidity = nullptr) {
+        float cold_junction_temp;
+        this->sensor_->getInfo(&cold_junction_temp);
+
+        uint16_t analog = 0;
+        for (uint8_t i = 0; i < samples; ++i) {
+            analog += analogRead(Pin);
+        }
+        float voltage = (float)analog/samples * (5./1024);
+        voltage -= min(voltage, 0.03);
+        float new_temp = voltage/((float)OpAmpGain * seebeck_coeff_) + cold_junction_temp;
+        *temp = new_temp;
+
+        #ifdef LOG_PLOTTER
+        Serial.print("ThermocoupleVoltageX1000:"); Serial.print(voltage*1000, 4); Serial.print(',');
+        #endif
+
+        this->setHumidity(humidity);
+        this->setCachedInfo(*temp, *humidity);
+    }
+
+    bool begin() override {
+        return this->sensor_->begin();
+    }
+
+    protected:
+    float seebeck_coeff_;
+};
+
+#define THERM_PIN A3
+
+#ifndef PROTEUS
+#define THERM_OP_AMP_GAIN 320
+#else
+#define THERM_OP_AMP_GAIN 220
+#endif
+
+#define THERM_INTERVAL 500
+
+const char thermocouple_label[] PROGMEM = "Thermocouple";
+
+ThermocoupleSensor<SensorType::kThermocouple, Sensor*, THERM_PIN, THERM_OP_AMP_GAIN> thermocouple_sensor(&ntc_sensor, thermocouple_label, THERM_INTERVAL);
+\end{lstlisting}
+
+\begin{lstlisting}[style=cpp-small, caption=Клас-спадок базового класу Sensor для роботи з датчиком DS18B20, label=lst:ds18_sensor]
+#include <microDS18B20.h>
+#include "Sensor.h"
+
+template<SensorType Type, class T>
+class DS18Sensor: public TypedSensor<Type, T> {
+    public:
+    DS18Sensor(T sensor, const char *label, uint16_t interval): TypedSensor<Type, T>(sensor, label, interval) {}
+
+    void getInfo(float *temp, float *humidity = nullptr) override {
+        *temp = this->sensor_->readTemp() ? this->sensor_->getTemp() : INFINITY;
+        this->setHumidity(humidity);
+        this->setCachedInfo(*temp);
+    }
+
+    bool begin() override {
+        this->sensor_->requestTemp();
+        return true;
+    }
+
+    bool requestTemp() override {
+        this->sensor_->requestTemp();
+        return true;
+    }
+};
+
+#define DS 3
+#define DS18_INTERVAL 1000
+
+const char ds18_label[] PROGMEM = "DS18B20";
+
+MicroDS18B20<DS> ds18;
+
+DS18Sensor<SensorType::kDS18, MicroDS18B20<DS>*> ds18_sensor(&ds18, ds18_label, DS18_INTERVAL);
+\end{lstlisting}
+
+\begin{lstlisting}[style=cpp-small, caption=Клас-спадок базового класу Sensor для роботи з датчиком DHT11/DHT22, label=lst:dht_sensor]
+template<SensorType Type, class T>
+class DHTSensor: public TypedSensor<Type, T> {
+    public:
+    DHTSensor(T sensor, const char *label, uint16_t interval): TypedSensor<Type, T>(sensor, label, interval) {}
+
+    void getInfo(float *temp, float *humidity = nullptr) override {
+        sensors_event_t event;
+        this->sensor_->temperature().getEvent(&event);
+        *temp = event.temperature;
+        this->sensor_->humidity().getEvent(&event);
+        this->setHumidity(humidity, event.relative_humidity);
+        this->setCachedInfo(*temp, *humidity);
+    }
+
+    bool begin() override {
+        this->sensor_->begin();
+        return true;
+    }
+};
+
+#define DHT11_PIN 10
+#define DHT22_PIN 8
+
+#define DHT11_INTERVAL 1000
+#define DHT22_INTERVAL 2000
+
+const char dht11_label[] PROGMEM = "DHT11";
+const char dht22_label[] PROGMEM = "DHT22";
+
+DHT_Unified dht11(DHT11_PIN, DHT11);
+DHT_Unified dht22(DHT22_PIN, DHT22);
+
+DHTSensor<SensorType::kDHT11, DHT_Unified*> dht11_sensor(&dht11, dht11_label, DHT11_INTERVAL);
+DHTSensor<SensorType::kDHT22, DHT_Unified*> dht22_sensor(&dht22, dht22_label, DHT22_INTERVAL);
+\end{lstlisting}
+
+\begin{lstlisting}[style=cpp-small, caption=Клас-спадок базового класу Sensor для роботи з датчиком HTU21D, label=lst:htu21_sensor]
+#include "Sensor.h"
+
+template<SensorType Type, class T>
+class HTU21Sensor: public TypedSensor<Type, T> {
+    public:
+    HTU21Sensor(T sensor, const char *label, uint16_t interval): TypedSensor<Type, T>(sensor, label, interval) {
+    }
+
+    void getInfo(float *temp, float *humidity = nullptr) override {
+        *temp = this->sensor_->readTemperature();
+        this->setHumidity(humidity, this->sensor_->readHumidity());
+        this->setCachedInfo(*temp, *humidity);
+    }
+
+    bool begin() override {
+        return this->sensor_->begin();
+    }
+};
+
+#define HTU21_INTERVAL 500
+const char htu21_label[] PROGMEM = "HTU21D1";
+
+HTU2xD_SHT2x_SI70xx htu21(HTU2xD_SENSOR, HUMD_12BIT_TEMP_14BIT);
+
+HTU21Sensor<SensorType::kHTU21, HTU2xD_SHT2x_SI70xx*> htu21_sensor(&htu21, htu21_label, HTU21_INTERVAL);
+\end{lstlisting}
+
+\begin{lstlisting}[style=cpp-small, caption=Код основної частини програми, label=lst:program]
+#include <Arduino.h>
+
+#include <Wire.h>
+
+#define LOG_PLOTTER
+
+#include "SensorConfigs/NTC.h"
+#include "SensorConfigs/DS18.h"
+#include "SensorConfigs/DHT.h"
+#include "SensorConfigs/HTU21D1.h"
+#include "SensorConfigs/Thermocouple.h"
+
+#include <LiquidCrystal_I2C.h>
+#ifdef PROTEUS
+#define I2C 0x20
+#else
+#define I2C 0x27
+#endif
+
+LiquidCrystal_I2C lcd(I2C, 16, 2);
+
+#include "LCDSensorPrinter.h"
+LCDTempPrinter sensor_printer(&lcd);
+
+#include "Timer.h"
+void readTempTimer();
+
+#include "Sensor.h"
+#define SENSOR_NUM 6
+struct Sensor *sensors[SENSOR_NUM] = {
+    &ntc_sensor, &thermocouple_sensor,
+    &ds18_sensor, &htu21_sensor,
+    &dht11_sensor, &dht22_sensor,
+};
+
+int8_t current_sensor_idx = 0;
+Sensor *current_sensor = sensors[current_sensor_idx];
+Timer<> timer(
+    #ifndef LOG_PLOTTER
+    current_sensor->getInterval()
+    #else
+    1000
+    #endif
+    ,
+    readTempTimer);
+
+#include "Button.h"
+Button<5, true> button;
+
+void setup() {
+    Serial.begin(9600);
+    #ifndef PROTEUS
+    analogReference(EXTERNAL);
+    #endif
+
+    lcd.begin(16, 2);
+    lcd.backlight();
+    lcd.clear();
+    sensor_printer.setLabel(current_sensor->getLabel());
+    sensor_printer.setTopArrows();
+
+    for (uint8_t i = 0; i < SENSOR_NUM; i++) {
+        sensors[i]->begin();
+    }
+    Serial.println();
+}
+
+void loop() {
+    timer.tick();
+    button.tick();
+
+    if (button.isClick() || button.isDoubleClick()) {
+        static float temp, humidity;
+
+        if (button.isClick()) {
+            if (++current_sensor_idx == SENSOR_NUM) {
+                current_sensor_idx = 0;
+            }
+        } else {
+            if (--current_sensor_idx == -1) {
+                current_sensor_idx = SENSOR_NUM-1;
+            }
+        }
+
+        current_sensor = sensors[current_sensor_idx];
+
+        current_sensor->getCachedInfo(&temp, &humidity);
+
+        sensor_printer.setLabel(current_sensor->getLabel());
+        sensor_printer.setTopArrows();
+        sensor_printer.setInfo(temp, humidity);
+        button.end();
+        #ifndef LOG_PLOTTER
+        timer.set_interval(current_sensor->getInterval());
+        #endif
+    }
+}
+
+void readTempTimer() {
+    static float temp, humidity;
+
+    #ifdef LOG_PLOTTER
+    for (uint8_t i = 0; i < SENSOR_NUM; ++i) {
+        sensors[i]->getInfo(&temp, &humidity);
+        Serial.print(reinterpret_cast<const __FlashStringHelper*>(sensors[i]->getLabel())); Serial.print(':'); 
+        Serial.print(temp); Serial.print(',');
+    }
+    Serial.println();
+    #endif
+
+    current_sensor->getInfo(&temp, &humidity);
+    sensor_printer.setInfo(temp, humidity);
+
+    current_sensor->requestTemp();
+}
+\end{lstlisting}
+
+\begin{lstlisting}[style=cpp-small, caption=Клас для роботи з кнопкою, label=lst:button]
+#include "Timer.h"
+
+template<uint8_t Pin, bool Ground = false>
+class Button {
+    public:
+    Button() {
+        pinMode(Pin, Ground ? INPUT_PULLUP : INPUT);
+    }
+    ~Button(){};
+
+    void tick() {
+        state_ = Ground ^ digitalRead(Pin);
+        if (!is_pressed_ && state_ && timer_.tick()) {
+            is_pressed_ = true;
+        } else if (is_pressed_ && !state_ && timer_.tick()) {
+            is_pressed_ = false;
+            if (clicks == 0) {
+                first_press_ms = millis();
+                is_finished = false;
+            }
+            ++clicks;
+            
+            if (clicks < 2) {
+                first_press_ms += 400;
+            }
+        } else if (clicks != 0 && !is_finished && millis() > first_press_ms) {
+            is_finished = true;
+        } else if (is_finished && millis() - first_press_ms > 500) {
+            clicks = 0;
+        }
+    }
+
+    bool isClick() {
+        return is_finished && clicks == 1;
+    }
+
+    bool isDoubleClick() {
+        return is_finished && clicks == 2;
+    }
+
+    void end() {
+        if (is_finished) {
+            is_finished = false;
+            clicks = 0;
+        }
+    }
+
+    private:
+    Timer<> timer_ = Timer<>(100);
+    bool state_ = false;
+    bool is_pressed_ = false;
+    bool is_finished = false;
+    uint8_t clicks = 0;
+    uint32_t first_press_ms = 0;
+};
+\end{lstlisting}
+
+\begin{lstlisting}[style=cpp-small, caption=Клас Timer, label=lst:timer]
+template<typename Arg = void*>
+class Timer {
+    public:
+    Timer(uint32_t interval, void (*handler)(Arg arg), Arg arg, bool should_start = true): interval_(interval), handler_(handler), arg_(arg) {
+        if (should_start) start();
+    }
+    Timer(uint32_t interval, void (*handler)(), bool should_start = true): interval_(interval) {
+        handler_ = (void(*)(void*))(handler);
+        if (should_start) start();
+    }
+    Timer(uint32_t interval, bool should_start = true): Timer(interval, nullptr, should_start) {
+    }
+
+    ~Timer() {};
+
+    void start() {
+        timer_ = millis();
+        running_ = true;
+    }
+
+    void stop() {
+        timer_ = millis() - timer_;
+        running_ = false;
+    }
+
+    void resume() {
+        timer_ = millis() + timer_;
+        running_ = true;
+    }
+
+    uint32_t get_interval() {
+        return interval_;
+    }
+
+    void set_interval(uint32_t interval = 1000) {
+        interval_ = interval;
+    }
+
+    uint32_t lastTick() {
+        return timer_;
+    }
+
+    bool isRunning() {
+        return running_ && (millis() - timer_) > interval_;
+    }
+
+    bool tick() {
+        uint32_t now;
+        if (running_ && (now = millis()) - timer_ > interval_) {
+            timer_ = now;
+            if (handler_) handler_(arg_);
+            return true;
+        }
+        return false;
+    }
+
+    private:
+    uint32_t timer_ = 0;
+    uint32_t interval_;
+    bool running_ = false;
+    void (*handler_)(Arg arg);
+    Arg arg_;
+};
+\end{lstlisting}

@@ -1,0 +1,60 @@
+{
+    "pasteImage.path": "${currentFileDir}/images",
+    "pasteImage.showFilePathConfirmInputBox": true,
+    "pasteImage.filePathConfirmInputBoxMode": "onlyName",
+    "pasteImage.insertPattern":"${imageFileName}",
+    "pasteImage.suffix":".png",
+
+    "ltex.language": "uk-UA",
+    "cSpell.language": "en,uk",
+
+    "latex-workshop.showContextMenu": true,
+    "latex-workshop.latex.autoBuild.run": "never",
+    "latex-workshop.synctex.afterBuild.enabled": false,
+    "latex-workshop.view.pdf.viewer": "tab",
+    //"latex-workshop.bind.altKeymap.enabled": true,
+    "latex-workshop.view.pdf.internal.synctex.keybinding": "double-click",
+    "latex-workshop.latex.outDir": "./out/",
+    "latex-workshop.latex.recipes": [
+        {
+            "name": "latexmk (xelatex) -> biber -> xelatex*2",
+            "tools": [
+                "mkdir-aux",
+                "xelatexmk",
+                "biber",
+                "xelatexmk",
+                "xelatexmk"
+            ]
+        }
+    ],
+    "latex-workshop.latex.tools": [
+        {
+            "name": "mkdir-aux",
+            "command": "mkdir",
+            "args": ["-p", "%OUTDIR%_aux"]
+        },
+        {
+            "name": "xelatexmk",
+            "command": "latexmk",
+            "args": [
+                //"-f",
+                "-synctex=1",
+                "-interaction=nonstopmode",
+                "-file-line-error",
+                "-lualatex",
+                "-aux-directory=%OUTDIR%_aux",
+                "-output-directory=%OUTDIR%",
+                "%DOC%"
+            ]
+        },
+        {
+            "name": "biber",
+            "command": "biber",
+            "args": [
+                "--input-directory=%OUTDIR%_aux",
+                "--output-directory=%OUTDIR%_aux",
+                "%DOCFILE%"
+            ]
+        }
+    ]
+}

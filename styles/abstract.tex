@@ -1,0 +1,12 @@
+\addto\captionsukrainian{\renewcommand{\abstractname}{Реферат}}
+
+\newenvironment{abstractpage}
+  {\addcontentsline{toc}{chapter}{Реферат}
+  \cleardoublepage\vspace*{\fill}
+  \thispagestyle{empty}}
+  {\cleardoublepage}
+
+\renewenvironment{abstract}[1]
+    {\selectlanguage{#1}
+    \begin{center}\MakeUppercase\abstractname\end{center}}
+    {\par\vfill}
